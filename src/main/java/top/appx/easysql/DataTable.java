@@ -1,4 +1,4 @@
-package top.appx.easysql.data;
+package top.appx.easysql;
 
 import java.util.ArrayList;
 import java.util.List;

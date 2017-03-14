@@ -1,4 +1,4 @@
-package top.appx.zutil.info;
+package top.appx.eweb;
 
 /**
  * Created by qq799 on 2017/2/26.

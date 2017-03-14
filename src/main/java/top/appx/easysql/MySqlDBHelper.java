@@ -1,9 +1,6 @@
 package top.appx.easysql;
 
-import top.appx.easysql.data.DataRow;
-import top.appx.easysql.data.DataTable;
-import top.appx.easysql.ex.EasySqlException;
-import top.appx.zutil.info.PageResultInfo;
+import top.appx.eweb.PageResultInfo;
 
 import java.sql.SQLException;
 
@@ -46,6 +43,8 @@ public class MySqlDBHelper {
 
     public PageResultInfo<DataRow> queryPage(String sql, int page,int pageSize,Object... paramValues) throws SQLException {
         try(MySqlDatabase db = createMysqlDatabase(this._url,this._user,this._password)){
+
+
             return db.queryPage(sql,page,pageSize,paramValues);
         }
         catch (SQLException e0){

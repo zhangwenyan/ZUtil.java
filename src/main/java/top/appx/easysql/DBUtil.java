@@ -1,9 +1,5 @@
 package top.appx.easysql;
 
-import top.appx.easysql.data.DataRow;
-import top.appx.easysql.data.DataTable;
-import top.appx.easysql.ex.EasySqlException;
-
 import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -62,5 +58,19 @@ public class DBUtil {
     public static String getCountSql(String sql){
         return "select count(*) from ("+sql+") as easysql_count";
     }
+/*
+    public static String getSqlCount(String sql)
+    {
+        if (sql.IndexOf("order ") == -1)
+        {
+            return "select count(*) from ("+sql+ ") as easysql_tb";
+        }
+        else
+        {
+            return "select count(*) from (" + sql.Substring(0,sql.IndexOf("order ")) + ") as easysql_tb";
+        }
+    }
+*/
+
 
 }

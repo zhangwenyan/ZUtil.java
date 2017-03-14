@@ -1,4 +1,4 @@
-package top.appx.easysql.ex;
+package top.appx.easysql;
 
 /**
  * Created by qq799 on 2017/2/26.
