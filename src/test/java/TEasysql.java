@@ -21,9 +21,9 @@ public class TEasysql {
     public void t1() throws Exception {
         BaseDatabase db = DBFactory.createMysqlDatabase(url,"root","youotech");
         UserEntity userEntity = new UserEntity();
+        userEntity.setUsername("aaa");
+        userEntity.setPassword("aasdfsad");
+        db.save(userEntity);
 
-        List<UserEntity> list = db.queryByEntity(userEntity, Restrain.eq("id",2));
-
-        System.out.println(list.size());
     }
 }

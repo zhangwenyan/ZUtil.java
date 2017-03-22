@@ -13,14 +13,8 @@ public class MySqlDatabase extends BaseDatabase {
     protected String getLimitString(String sql, int page, int pageSize) {
         return sql +" limit " +(page-1)*pageSize+","+pageSize;
     }
-
     public void test1(String str){
         System.out.println("test1 str:"+str);
     }
 
-    public void close() throws Exception {
-        if(this._connection!=null){
-            this._connection.close();;
-        }
-    }
 }
