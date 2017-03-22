@@ -26,8 +26,8 @@ public class DataRow{
     public Object get(String key){
         return map.get(key.toLowerCase());
     }
-    public Object get(int index){
-        return map.get(index);
-    }
 
+    public Object scalar(){
+        return map.get( map.keySet().iterator().next());
+    }
 }

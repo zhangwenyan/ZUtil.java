@@ -5,12 +5,10 @@ import top.appx.eweb.PageResultInfo;
 import java.sql.SQLException;
 import java.util.List;
 
-import static top.appx.easysql.DBFactory.createMysqlDatabase;
-
 /**
  * Created by lhzxd on 2017/3/17.
  */
-public abstract class BaseDBHelper<R> {
+public abstract   class BaseDBHelper<R> implements DatabaseMethodInterface {
 
     protected abstract BaseDatabase createDatabase();
 
@@ -22,6 +20,7 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws SQLException
      */
+    @Override
     public int execute(String sql,Object... paramValues) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.execute(sql,paramValues);
@@ -41,6 +40,7 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws SQLException
      */
+    @Override
     public DataTable queryDataTable(String sql,Object... paramValues) throws SQLException{
         try(BaseDatabase db = createDatabase()){
             return  db.queryDataTable(sql,paramValues);
@@ -59,11 +59,18 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws SQLException
      */
+    @Override
     public int total(String sql, Object... paramValues) throws SQLException {
         try(BaseDatabase db = createDatabase()) {
             return db.total(sql, paramValues);
         }
     }
+
+    @Override
+    public Object queryScalar(String sql, Object... paramValues) throws SQLException {
+        return null;
+    }
+
     /**
      * 根据sql分页查询
      *
@@ -74,11 +81,20 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws SQLException
      */
+    @Override
     public PageResultInfo<DataRow> queryPage(String sql, int page, int pageSize, Object... paramValues) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.queryPage(sql,page,pageSize,paramValues);
         }
     }
+
+    @Override
+    public PageResultInfo queryPage(String sql, Class<?> entityClass, int page, int pageSize, Object... paramValues) throws SQLException {
+        try(BaseDatabase db = createDatabase()){
+            return db.queryPage(sql,entityClass,page,pageSize,paramValues);
+        }
+    }
+
     /**
      * sql查询返回实体类的集合
      *
@@ -88,6 +104,7 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws Exception
      */
+    @Override
     public List<R> queryBySql(String sql, Class<?> entityClass, Object... paramValues) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.queryBySql(sql,entityClass,paramValues);
@@ -103,6 +120,7 @@ public abstract class BaseDBHelper<R> {
      * @return 返回实体类对象的集合
      * @throws Exception
      */
+    @Override
     public List<R> queryByEntity(Object entity, Restrain... restrains) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.queryByEntity(entity,restrains);
@@ -115,6 +133,7 @@ public abstract class BaseDBHelper<R> {
      * @param entity
      * @throws SQLException
      */
+    @Override
     public int update(Object entity) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.update(entity);
@@ -127,24 +146,32 @@ public abstract class BaseDBHelper<R> {
      * @return
      * @throws SQLException
      */
+    @Override
     public int save(Object entity) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.save(entity);
         }
     }
+
+    @Override
+    public int saveAutoSetId(Object entity) throws SQLException {
+        try(BaseDatabase db=  createDatabase()){
+            return db.saveAutoSetId(entity);
+        }
+    }
+
     /**
      * 删除单个数据,根据id删除
      *
      * @param entity
      * @throws SQLException
      */
+    @Override
     public int remove(Object entity) throws SQLException {
         try(BaseDatabase db = createDatabase()){
             return db.remove(entity);
         }
     }
-
-
 
 
 

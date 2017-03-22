@@ -1,36 +1,48 @@
 package top.appx.easysql;
 
-import entity.UserEntity;
-import sun.reflect.generics.scope.MethodScope;
 import top.appx.eweb.PageResultInfo;
 import top.appx.zutil.ReflectUtil;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Created by qq799 on 2017/2/26.
  */
-public abstract class BaseDatabase<R> implements AutoCloseable {
+public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoCloseable {
     protected Connection _connection;
 
     protected abstract String getLimitString(String sql, int page, int pageSize);
 
+
+    @Override
+    public int execute(String sql, Object... paramValues) throws SQLException {
+        return _execute(sql, false, paramValues).getCount();
+    }
+
+
     /**
-     * 执行数据库更新语句
+     * 执行数据库更新语句，返回影响的记录数量（和自动生成的id等(if generatedKey)）
      *
      * @param sql
+     * @param generatedKey
      * @param paramValues
      * @return
      * @throws SQLException
      */
-    public int execute(String sql, Object... paramValues) throws SQLException {
+    private ExecuteResult _execute(String sql, boolean generatedKey, Object... paramValues) throws SQLException {
         System.out.println(sql);
-        try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
+        ExecuteResult er = new ExecuteResult();
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            if (generatedKey) {
+                pstmt = _connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            } else {
+                pstmt = _connection.prepareStatement(sql);
+            }
             for (int i = 0; i < paramValues.length; i++) {
                 Object param = paramValues[i];
                 String v = null;
@@ -39,18 +51,31 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
                 }
                 pstmt.setString(i + 1, v);
             }
-            return pstmt.executeUpdate();
+            er.setCount(pstmt.executeUpdate());
+            if (generatedKey) {
+                rs = pstmt.getGeneratedKeys();
+                if (rs.next()) {
+                    Object resultObj = rs.getObject(1);
+                    er.setGeneratedKey(resultObj);
+                } else {
+                    throw new EasySqlException("no generatedKey");
+                }
+            }
+
+        } finally {
+            if (rs != null) {
+                rs.close();
+            }
+            if (pstmt != null) {
+                pstmt.close();
+            }
         }
+        return er;
     }
 
-    /**
-     * 查询返回结果
-     *
-     * @param sql
-     * @param paramValues
-     * @return
-     * @throws SQLException
-     */
+
+
+    @Override
     public DataTable queryDataTable(String sql, Object... paramValues) throws SQLException {
         System.out.println(sql);
         try (PreparedStatement pstmt = _connection.prepareStatement(sql)) {
@@ -68,63 +93,48 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
         }
     }
 
-    /**
-     * 执行sql语句返回唯一数字
-     *
-     * @param sql
-     * @param paramValues
-     * @return
-     * @throws SQLException
-     */
+
+    @Override
     public int total(String sql, Object... paramValues) throws SQLException {
-        DataTable dt = queryDataTable(sql, paramValues);
-        DataRow s = dt.getRows().get(0);
-        return Integer.parseInt(dt.getRows().get(0).get(0).toString());
+        return Integer.parseInt(queryScalar(sql,paramValues).toString());
     }
 
-    /**
-     * 根据sql分页查询
-     *
-     * @param sql
-     * @param page
-     * @param pageSize
-     * @param paramValues
-     * @return
-     * @throws SQLException
-     */
+
+    @Override
+    public Object queryScalar(String sql, Object... paramValues) throws SQLException{
+        DataTable dt = queryDataTable(sql, paramValues);
+        DataRow s = dt.getRows().get(0);
+        return dt.getRows().get(0).scalar();
+    }
+
+
+    @Override
     public PageResultInfo<DataRow> queryPage(String sql, int page, int pageSize, Object... paramValues) throws SQLException {
-        PageResultInfo<DataRow> pageResultInfo = new PageResultInfo<>();
+       return (PageResultInfo<DataRow>) queryPage(sql,DataRow.class,page,pageSize,paramValues);
+    }
+
+    @Override
+    public PageResultInfo<R> queryPage(String sql, Class<?> entityClass, int page, int pageSize, Object... paramValues) throws SQLException{
+        PageResultInfo<R> pageResultInfo = new PageResultInfo<>();
         String sqlCount = DBUtil.getCountSql(sql);
         String sqlPage = this.getLimitString(sql, page, pageSize);
         int total = this.total(sqlCount, paramValues);
         pageResultInfo.setTotal(total);
         DataTable dt = queryDataTable(sqlPage, paramValues);
-        pageResultInfo.setRows(dt.getRows());
+        pageResultInfo.setRows(dataTableToEntityList(dt,entityClass));     ;
         return pageResultInfo;
     }
 
-    /**
-     * sql查询返回实体类的集合
-     *
-     * @param sql
-     * @param entityClass
-     * @param paramValues
-     * @return
-     * @throws Exception
-     */
+
+
+    @Override
     public List<R> queryBySql(String sql, Class<?> entityClass, Object... paramValues) throws SQLException {
         DataTable dt = queryDataTable(sql, paramValues);
         return dataTableToEntityList(dt, entityClass);
     }
 
-    /**
-     * 快速查询方法
-     *
-     * @param entity    方法会根据这个对象构造查询语句,对于int会使用等于,对于string会使用like....
-     * @param restrains 附加查询限制条件
-     * @return 返回实体类对象的集合
-     * @throws Exception
-     */
+
+    @Override
     public List<R> queryByEntity(Object entity, Restrain... restrains) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
@@ -138,7 +148,7 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
                 try {
                     value = method.invoke(entity);
                 } catch (Exception e) {
-                    throw  new EasySqlException(e);
+                    throw new EasySqlException(e);
                 }
                 String pName = method.getName().substring(3);
                 if (!ReflectUtil.isDefaultValue(value)) {
@@ -167,12 +177,8 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
     }
 
 
-    /**
-     * 根据entity的id修改
-     *
-     * @param entity
-     * @throws SQLException
-     */
+
+    @Override
     public int update(Object entity) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
@@ -206,13 +212,22 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
         return execute(sql, paramValues.toArray());
     }
 
+    @Override
+    public int save(Object entity) throws SQLException{
+        return _save(entity,false);
+    }
+    @Override
+    public int saveAutoSetId(Object entity) throws SQLException{
+        return _save(entity,true);
+    }
     /**
      * 将实体类持久化到数据库中
-     *
      * @param entity
+     * @param autoSetId 是否自动设置id
+     * @return
      * @throws SQLException
      */
-    public int save(Object entity) throws SQLException {
+    private int _save(Object entity, boolean autoSetId) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
         String tbName = table.value();
@@ -243,16 +258,35 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
         }
         sql = sql.substring(0, sql.length() - 1);
         sql += ")";
-        return execute(sql, paramValues.toArray());
+        ExecuteResult er = _execute(sql, autoSetId, paramValues.toArray());
+        if (autoSetId) {
+            Method method = null;
+            try {
+                method = c.getMethod("setId", int.class);
+            } catch (NoSuchMethodException e) {
+            }
+            try {
+                method = c.getMethod("setId", Integer.class);
+            } catch (NoSuchMethodException e) {
+            }
+            if (method == null) {
+                throw new EasySqlException("entity must has setId(int) or setId(Integer) method");
+            }
+            try {
+                method.invoke(entity, Integer.parseInt(er.getGeneratedKey().toString()));
+            } catch (Exception ex) {
+                throw new EasySqlException(ex);
+            }
+        }
+        return er.getCount();
     }
 
 
-    /**
-     * 删除单个数据,根据id删除
-     * @param entity
-     * @return
-     * @throws SQLException
-     */
+
+
+
+
+    @Override
     public int remove(Object entity) throws SQLException {
         try {
             String tbName = entity.getClass().getAnnotation(Table.class).value();
@@ -275,6 +309,9 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
      * @throws Exception
      */
     private List<R> dataTableToEntityList(DataTable dataTable, Class<?> entityClass) {
+        if(DataRow.class.equals(entityClass)){
+            return (List<R>) dataTable.getRows();
+        }
         try {
             List<Object> list = new ArrayList<>();
             Method[] methods = entityClass.getMethods();
@@ -295,6 +332,7 @@ public abstract class BaseDatabase<R> implements AutoCloseable {
         }
     }
 
+    @Override
     public  void close() throws SQLException{
         if(_connection!=null){
             _connection.close();
