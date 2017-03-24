@@ -1,11 +1,8 @@
 import org.junit.Test;
-import top.appx.easysql.MySqlDatabase;
-import top.appx.zsms.SmsTemplate;
-import top.appx.zsms.SmsTool_Alidayu;
+import top.appx.zutil.easysql.MySqlDatabase;
+import top.appx.zutil.zsms.SmsTemplate;
+import top.appx.zutil.zsms.SmsTool_Alidayu;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 

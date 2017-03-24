@@ -1,6 +1,6 @@
 package top.appx.zutil;
 
-import top.appx.zsms.ZSmsMethod;
+import top.appx.zutil.zsms.ZSmsMethod;
 
 /**
  * Created by qq799 on 2017/2/26.
