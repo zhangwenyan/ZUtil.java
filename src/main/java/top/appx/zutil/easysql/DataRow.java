@@ -1,12 +1,13 @@
 package top.appx.zutil.easysql;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Created by qq799 on 2017/2/26.
  */
-public class DataRow{
-    private HashMap<String,Object> map = new HashMap<>();
+public class DataRow extends HashMap<String,Object>{
 
     public DataRow(DataTable table){
         this.table = table;
@@ -15,19 +16,17 @@ public class DataRow{
      * 所属DataTable
      */
     private DataTable table;
-    public DataTable getTable(){
-        return table;
-    }
+    //public DataTable getTable(){
+      //  return table;
+   // }
 
+/*    @Override
+    public Object get(Object key) {
+        return null;
+    }*/
 
-    public void put(String key,Object value){
-        map.put(key.toLowerCase(),value);
-    }
-    public Object get(String key){
-        return map.get(key.toLowerCase());
-    }
 
     public Object scalar(){
-        return map.get( map.keySet().iterator().next());
+        return this.get(this.keySet().iterator().next());
     }
 }

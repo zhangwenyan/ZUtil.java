@@ -1,12 +1,17 @@
 package t;
 
 import top.appx.zutil.easysql.Table;
+import top.appx.zutil.eweb.Param;
 
 /**
  * Created by mrz on 2017/3/23.
  */
 @Table("user")
 public class UserEntity {
+
+    public void tt(@Param("ptest") String aaa){
+        System.out.println("aaa");
+    }
     private Integer id;
     private String username;
     private String password;

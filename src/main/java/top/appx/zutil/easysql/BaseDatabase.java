@@ -1,5 +1,6 @@
 package top.appx.zutil.easysql;
 
+import top.appx.zutil.eweb.MsgException;
 import top.appx.zutil.eweb.PageInfo;
 import top.appx.zutil.eweb.PageResultInfo;
 import top.appx.zutil.ReflectUtil;
@@ -103,8 +104,7 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     @Override
     public Object queryScalar(String sql, Object... paramValues) throws SQLException{
         DataTable dt = queryDataTable(sql, paramValues);
-        DataRow s = dt.getRows().get(0);
-        return dt.getRows().get(0).scalar();
+        return dt.get(0).scalar();
     }
 
 
@@ -129,6 +129,9 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     public PageResultInfo<R> queryPage(PageInfo pageInfo, Restrain... restrains) throws SQLException{
         Class<?> c = pageInfo.getQuery().getClass();
         Table table = c.getAnnotation(Table.class);
+        if(table==null){
+            throw new EasySqlException("entity must have Table annotation");
+        }
         String sql = "select * from "+table.value()+" where 1=1 ";
         List<Object> paramValues = new ArrayList<>();
         sql += transSql(pageInfo.getQuery(),paramValues,restrains);
@@ -144,10 +147,10 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     }
     private String transSql(Object entity,List<Object> paramValues,Restrain... restrains){
         Class<?> c = entity.getClass();
-        Method[] methods = c.getMethods();
+        Method[] methods = c.getDeclaredMethods();
         String sql = "";
         for(Method method:methods){
-            if(method.getName().startsWith("get") && !method.getName().equals("getClass")){
+            if(method.getName().startsWith("get")){
                 Object value = null;
                 try{
                     value = method.invoke(entity);
@@ -183,6 +186,9 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     public List<R> queryByEntity(Object entity, Restrain... restrains) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
+        if(table==null){
+            throw new EasySqlException("entity must have Table annotation");
+        }
         String tbName = table.value();
         String sql = "select * from " + tbName + " where 1=1 ";
         List<Object> paramValues = new ArrayList<Object>();
@@ -196,12 +202,15 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     public int update(Object entity) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
+        if(table==null){
+            throw new EasySqlException("entity must have Table annotation");
+        }
         String tbName = table.value();
         String sql = "update " + tbName + " set ";
-        Method[] methods = c.getMethods();
+        Method[] methods = c.getDeclaredMethods();
         List<Object> paramValues = new ArrayList<Object>();
         for (Method method : methods) {
-            if (method.getName().startsWith("get") && !method.getName().equals("getClass") && !method.getName().equals("getId")) {
+            if (method.getName().startsWith("get")  && !method.getName().equals("getId")) {
                 try {
                     Object value = method.invoke(entity);
                     if (!ReflectUtil.isDefaultValue(value)) {
@@ -244,13 +253,16 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     private int _save(Object entity, boolean autoSetId) throws SQLException {
         Class<?> c = entity.getClass();
         Table table = c.getAnnotation(Table.class);
+        if(table==null){
+            throw new EasySqlException("entity must have Table annotation");
+        }
         String tbName = table.value();
         String sql = "insert into " + tbName + "(";
-        Method[] methods = c.getMethods();
+        Method[] methods = c.getDeclaredMethods();
         List<Object> paramValues = new ArrayList<Object>();
         int pCount = 0;
         for (Method method : methods) {
-            if (method.getName().startsWith("get") && !method.getName().equals("getClass")) {
+            if (method.getName().startsWith("get")) {
                 try {
                     Object value = method.invoke(entity);
                     if (!ReflectUtil.isDefaultValue(value)) {
@@ -303,7 +315,11 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
     @Override
     public int remove(Object entity) throws SQLException {
         try {
-            String tbName = entity.getClass().getAnnotation(Table.class).value();
+            Table table = entity.getClass().getAnnotation(Table.class);
+            if(table==null){
+                throw new EasySqlException("entity must have Table annotation");
+            }
+            String tbName = table.value();
             Object id = entity.getClass().getMethod("getId").invoke(entity);
             String sql = "delete from " + tbName + " where id=?";
             return execute(sql, id);
@@ -324,16 +340,17 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
      */
     private List<R> dataTableToEntityList(DataTable dataTable, Class<?> entityClass) {
         if(DataRow.class.equals(entityClass)){
-            return (List<R>) dataTable.getRows();
+            return (List<R>) dataTable;
         }
         try {
             List<Object> list = new ArrayList<>();
-            Method[] methods = entityClass.getMethods();
-            for (DataRow dataRow : dataTable.getRows()) {
+            Method[] methods = entityClass.getDeclaredMethods();
+            for (DataRow dataRow : dataTable) {
                 Object entity = entityClass.newInstance();
                 for (Method method : methods) {
                     if (method.getName().startsWith("set")) {
                         String pName = method.getName().substring(3);
+                        pName =  pName.substring(0,1).toLowerCase()+pName.substring(1);
                         Object value = dataRow.get(pName);
                         method.invoke(entity, value);
                     }
@@ -346,8 +363,27 @@ public abstract class BaseDatabase<R> implements DatabaseMethodInterface,AutoClo
         }
     }
 
+    public  void beginTransaction() throws SQLException {
+            _connection.setAutoCommit(false);
+    }
+    public  void commitTranscation() throws SQLException{
+        try {
+            _connection.commit();
+        }finally {
+            _connection.setAutoCommit(true);
+        }
+    }
+    public  void rollbackTranscation()throws SQLException{
+        try {
+            _connection.rollback();
+        }finally {
+            _connection.setAutoCommit(true);
+        }
+    }
+
     @Override
     public  void close() throws SQLException{
+
         if(_connection!=null){
             _connection.close();
         }

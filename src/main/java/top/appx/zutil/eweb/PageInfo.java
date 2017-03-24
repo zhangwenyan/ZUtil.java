@@ -24,6 +24,10 @@ public class PageInfo {
         this.pageSize = pageSize;
     }
 
+    public void setRows(int rows){
+        this.pageSize = rows;
+    }
+
     public Object getQuery() {
         return query;
     }

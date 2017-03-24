@@ -11,6 +11,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,7 @@ public class MainFilter implements Filter {
             Object obj = cl.newInstance();
 
             Method method = null;
-            for(Method m : obj.getClass().getMethods()){
+            for(Method m : obj.getClass().getDeclaredMethods()){
                 if(m.getName().equals(action)){
                     method = m;
                     break;
@@ -63,11 +64,17 @@ public class MainFilter implements Filter {
                 throw new MsgException("没有找到方法:"+controllerFullName+"."+action);
             }
 
-            Class<?>[] typs = method.getParameterTypes();
+            Parameter[] prs = method.getParameters();
             List<Object> ps = new ArrayList<Object>();
-            for(int i=0;i<typs.length;i++){
-                Class c1 = typs[i];
-                String pName = c1.getName();
+            for(int i=0;i<prs.length;i++){
+                Parameter pr = prs[i];
+                String pName = pr.getName();
+                Class<?> c1 = pr.getType();
+                Param param = pr.getAnnotation(Param.class);
+                if(param!=null){
+                    pName = param.value();
+                }
+
                 if(c1.equals(HttpServletRequest.class)){
                     ps.add(req);
                 }
@@ -157,6 +164,9 @@ public class MainFilter implements Filter {
             if(result.getClass().equals(String.class)){
                 servletRequest.getRequestDispatcher("/WEB-INF/jsp/"+result).forward(servletRequest,servletResponse);
             }else{
+                  servletResponse.setContentType("text/json");
+                servletResponse.setCharacterEncoding("utf-8");
+//                Content-Type:text/html;charset=UTF-8
                 servletResponse.getWriter().write(JSONObject.toJSONString(result));
             }
         }

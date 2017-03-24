@@ -47,7 +47,7 @@ public class DBUtil {
                     Object value = rs.getObject(i + 1);
                     dr.put(key, value);
                 }
-                dt.getRows().add(dr);
+                dt.add(dr);
             }
             return dt;
         }catch (Exception ex){
